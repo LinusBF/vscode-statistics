@@ -321,7 +321,12 @@ export function activate(context: vscode.ExtensionContext) {
     // Start scanning from the workspace root
     await scanDirectory(rootPath, "");
 
-    // Compute averages and prepare output
+    // Sort file types by total lines of code (descending)
+    const sortedFileTypes = Array.from(statsMap.entries()).sort((a, b) => {
+      return b[1].totalLines - a[1].totalLines;
+    });
+
+    // Compute averages and prepare tooltip output (keep top 10 for tooltip)
     let tooltipLines: string[] = [];
     tooltipLines.push(
       `**File Type Statistics** (in workspace: \`${path.basename(rootPath)}\`):`
@@ -332,44 +337,103 @@ export function activate(context: vscode.ExtensionContext) {
     tooltipLines.push(
       "|----------|------:|---------:|-------:|-------:|-------:|------------:|------------:|------------:|"
     );
-    // Sort file types alphabetically for output
-    const fileTypes = Array.from(statsMap.keys()).sort();
-    for (const ext of fileTypes) {
-      const s = statsMap.get(ext)!;
+
+    // Show top 10 in tooltip to keep it manageable
+    const topFileTypes = sortedFileTypes.slice(0, 10);
+    for (const [ext, s] of topFileTypes) {
       const avgLines = s.fileCount ? Math.round(s.totalLines / s.fileCount) : 0;
       const avgSize = s.fileCount ? Math.round(s.totalSize / s.fileCount) : 0;
       tooltipLines.push(
-        `| \`${ext}\` | ${s.fileCount} | ${s.totalLines} | ${s.minLines} | ${avgLines} | ${s.maxLines} | ${s.minSize} | ${avgSize} | ${s.maxSize} |`
+        `| \`${ext}\` | ${s.fileCount} | ${s.totalLines.toLocaleString()} | ${
+          s.minLines
+        } | ${avgLines} | ${s.maxLines.toLocaleString()} | ${
+          s.minSize
+        } | ${avgSize.toLocaleString()} | ${s.maxSize.toLocaleString()} |`
       );
     }
+
+    if (sortedFileTypes.length > 10) {
+      tooltipLines.push(
+        `| ... | ... | ... | ... | ... | ... | ... | ... | ... |`
+      );
+      tooltipLines.push(
+        `*Click to see all ${sortedFileTypes.length} file types in output panel*`
+      );
+    }
+
     // Update status bar to show summary and attach detailed tooltip
-    statusItem.text = `$(check) Repo Stats: ${totalFiles} files, ${totalLines} lines`;
+    statusItem.text = `$(check) Repo Stats: ${totalFiles.toLocaleString()} files, ${totalLines.toLocaleString()} lines`;
     statusItem.tooltip = new vscode.MarkdownString(tooltipLines.join("\n"));
     statusItem.tooltip.isTrusted = true; // allow rendering of Markdown in tooltip
     statusItem.command = "codeStats.showDetails";
 
-    // Also output the detailed stats to the output channel
+    // Create detailed output for the output channel (scrollable)
     outputChannel.clear();
+
+    // Header with summary
+    outputChannel.appendLine("=".repeat(80));
+    outputChannel.appendLine(`REPOSITORY CODE STATISTICS`);
+    outputChannel.appendLine(`Workspace: ${path.basename(rootPath)}`);
+    outputChannel.appendLine(`Total Files: ${totalFiles.toLocaleString()}`);
     outputChannel.appendLine(
-      `Repository Statistics for '${path.basename(rootPath)}':`
+      `Total Lines of Code: ${totalLines.toLocaleString()}`
     );
-    for (const ext of fileTypes) {
-      const s = statsMap.get(ext)!;
+    outputChannel.appendLine(`File Types: ${sortedFileTypes.length}`);
+    outputChannel.appendLine("=".repeat(80));
+    outputChannel.appendLine("");
+
+    // Table header
+    const headerFormat = "%-15s %8s %12s %8s %8s %10s %12s %12s %12s";
+    outputChannel.appendLine(
+      headerFormat
+        .replace(/%(\d*)s/g, (match, width) => {
+          const w = parseInt(width) || 0;
+          return `%-${w}s`;
+        })
+        .replace("%-15s", "File Type      ")
+        .replace("%-8s", "Files   ")
+        .replace("%-12s", "Total LOC   ")
+        .replace("%-8s", "Min LOC ")
+        .replace("%-8s", "Avg LOC ")
+        .replace("%-10s", "Max LOC   ")
+        .replace("%-12s", "Min Size (B)")
+        .replace("%-12s", "Avg Size (B)")
+        .replace("%-12s", "Max Size (B)")
+    );
+    outputChannel.appendLine("-".repeat(115));
+
+    // Output all file types sorted by lines of code
+    for (const [ext, s] of sortedFileTypes) {
       const avgLines = s.fileCount ? Math.round(s.totalLines / s.fileCount) : 0;
       const avgSize = s.fileCount ? Math.round(s.totalSize / s.fileCount) : 0;
-      outputChannel.appendLine(`${ext} files: ${s.fileCount}`);
-      outputChannel.appendLine(
-        `  Lines of Code - total: ${s.totalLines}, min: ${s.minLines}, avg: ${avgLines}, max: ${s.maxLines}`
-      );
-      outputChannel.appendLine(
-        `  File Size (bytes) - min: ${s.minSize}, avg: ${avgSize}, max: ${s.maxSize}`
-      );
+
+      // Format the output line with proper spacing
+      const extDisplay = ext.length > 14 ? ext.substring(0, 11) + "..." : ext;
+      const line = `${extDisplay.padEnd(15)} ${s.fileCount
+        .toString()
+        .padStart(7)} ${s.totalLines.toLocaleString().padStart(11)} ${s.minLines
+        .toString()
+        .padStart(7)} ${avgLines.toString().padStart(7)} ${s.maxLines
+        .toLocaleString()
+        .padStart(9)} ${s.minSize.toLocaleString().padStart(11)} ${avgSize
+        .toLocaleString()
+        .padStart(11)} ${s.maxSize.toLocaleString().padStart(11)}`;
+      outputChannel.appendLine(line);
     }
+
+    // Footer
+    outputChannel.appendLine("-".repeat(115));
     outputChannel.appendLine(
-      `\nTotal: ${totalFiles} files, ${totalLines} lines of code`
+      `TOTAL: ${totalFiles.toLocaleString()} files, ${totalLines.toLocaleString()} lines of code`
     );
+    outputChannel.appendLine("");
     outputChannel.appendLine(
-      `(Hidden, binary, symlink, .gitignore-ignored, and generated files were excluded.)`
+      "Excluded: Hidden files, binary files, symlinks, .gitignore patterns, and generated files"
+    );
+    outputChannel.appendLine("Sorted by: Total lines of code (descending)");
+    outputChannel.appendLine("");
+    outputChannel.appendLine(
+      "Tip: This output is scrollable. Use Ctrl+F to search for specific file types."
     );
   };
 
