@@ -124,14 +124,16 @@ export function activate(context: vscode.ExtensionContext) {
                     try {
                         await new Promise<void>((resolve, reject) => {
                             const stream = fs.createReadStream(filePath);
-                            stream.on('data', (chunk: Buffer) => {
+                            stream.on('data', (chunk: string | Buffer) => {
                                 fileEmpty = false;
-                                for (let i = 0; i < chunk.length; i++) {
-                                    if (chunk[i] === 0x0A) { // '\n'
+                                // Ensure we're working with a Buffer
+                                const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+                                for (let i = 0; i < buffer.length; i++) {
+                                    if (buffer[i] === 0x0A) { // '\n'
                                         lineCount++;
                                     }
                                 }
-                                lastChunkEndedWithNewline = chunk[chunk.length - 1] === 0x0A;
+                                lastChunkEndedWithNewline = buffer[buffer.length - 1] === 0x0A;
                             });
                             stream.on('end', () => {
                                 if (!fileEmpty && !lastChunkEndedWithNewline) {
