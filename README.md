@@ -13,12 +13,29 @@ A lightweight Visual Studio Code extension that automatically indexes your works
 
 ## Installation
 
+### For Users
+
+**Method 1: From GitHub Releases (Recommended)**
+1. Go to the [Releases page](../../releases)
+2. Download the latest `.vsix` file
+3. In VS Code, go to Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`)
+4. Click the "..." menu and select "Install from VSIX..."
+5. Select the downloaded `.vsix` file
+
+**Method 2: From VS Code Marketplace (if published)**
+1. Open VS Code
+2. Go to Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`)
+3. Search for "Repository Code Statistics"
+4. Click Install
+
+### For Developers
+
 1. **Clone** the repository.
 2. Run `npm install` to install dependencies.
 3. **Build** the extension:
 
    ```bash
-   npx tsc
+   npm run compile
    ```
 4. **Launch** for testing:
 
@@ -28,18 +45,9 @@ A lightweight Visual Studio Code extension that automatically indexes your works
 
    Press **F5** to open a new Extension Development Host.
 
-### Package for the Marketplace
+### Creating Releases
 
-```bash
-npm install -g vsce
-vsce package
-```
-
-Upload the generated `.vsix` file to the Marketplace or install locally:
-
-```bash
-code --install-extension repo-code-stats-*.vsix
-```
+See [RELEASE_GUIDE.md](RELEASE_GUIDE.md) for detailed instructions on creating releases.
 
 ## Usage
 

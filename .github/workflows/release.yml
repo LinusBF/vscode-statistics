@@ -1,0 +1,63 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      - name: Install VSCE
+        run: npm install -g @vscode/vsce
+
+      - name: Package extension
+        run: vsce package --no-git-tag-version --no-update-package-json
+
+      - name: Get package info
+        id: package
+        run: |
+          echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## VS Code Extension Release
+
+            ### Installation
+            1. Download the `.vsix` file from the assets below
+            2. Open VS Code
+            3. Go to Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`)
+            4. Click the "..." menu and select "Install from VSIX..."
+            5. Select the downloaded `.vsix` file
+
+            ### Changes
+            See the commit history for detailed changes in this release.
+          draft: false
+          prerelease: false
+          files: |
+            ./${{ steps.package.outputs.name }}-${{ steps.package.outputs.version }}.vsix
