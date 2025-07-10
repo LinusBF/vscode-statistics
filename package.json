@@ -2,7 +2,7 @@
   "name": "workspace-stats",
   "displayName": "Workspace Stats",
   "description": "Indexes the workspace and shows code statistics per file type (lines of code and file sizes).",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "LinusBF",
   "repository": {
     "type": "git",
