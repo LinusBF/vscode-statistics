@@ -3,8 +3,12 @@ name: Release Extension
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   build-and-release:
